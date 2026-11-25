@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Job Application Tracker</title>
+  <style>
+    :root {
+      --bg: #f5f7fb;
+      --card: #ffffff;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --border: #dbe3ee;
+      --accent: #2563eb;
+      --accent-soft: #e8f0fe;
+      --applied: #1d4ed8;
+      --interview: #b45309;
+      --offer: #15803d;
+      --rejected: #b91c1c;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: linear-gradient(180deg, #eef4ff 0%, var(--bg) 180px);
+      color: var(--text);
+      line-height: 1.5;
+    }
+
+    .page {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 48px 20px 64px;
+    }
+
+    .header {
+      margin-bottom: 28px;
+    }
+
+    .eyebrow {
+      margin: 0 0 8px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--accent);
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: clamp(2rem, 5vw, 3rem);
+      line-height: 1.1;
+    }
+
+    .subtitle {
+      margin: 0;
+      color: var(--muted);
+      font-size: 1.05rem;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      box-shadow: 0 10px 30px rgba(37, 99, 235, 0.06);
+      padding: 24px;
+    }
+
+    .controls {
+      display: flex;
+      gap: 16px;
+      align-items: end;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      margin-bottom: 20px;
+    }
+
+    .control-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      min-width: 240px;
+    }
+
+    label {
+      font-weight: 600;
+      font-size: 0.95rem;
+    }
+
+    select {
+      padding: 12px 14px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      font-size: 1rem;
+      color: var(--text);
+      background: #fff;
+    }
+
+    select:focus {
+      outline: 3px solid var(--accent-soft);
+      border-color: var(--accent);
+    }
+
+    .count {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 680px;
+    }
+
+    th, td {
+      text-align: left;
+      padding: 14px 12px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+    }
+
+    th {
+      font-size: 0.82rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--muted);
+      background: #f8fafc;
+    }
+
+    tbody tr:hover {
+      background: #fbfdff;
+    }
+
+    .status {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .status-applied { color: var(--applied); background: #eff6ff; }
+    .status-interview { color: var(--interview); background: #fff7ed; }
+    .status-offer { color: var(--offer); background: #f0fdf4; }
+    .status-rejected { color: var(--rejected); background: #fef2f2; }
+
+    .empty {
+      padding: 24px 12px;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    @media (max-width: 640px) {
+      .page { padding-top: 32px; }
+      .card { padding: 18px; }
+      .control-group { min-width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header class="header">
+      <p class="eyebrow">INFO 430 Project</p>
+      <h1>Job Application Tracker</h1>
+      <p class="subtitle">Keep track of where you applied, what stage you are in, and what needs your attention next.</p>
+    </header>
+
+    <section class="card" aria-labelledby="applications-heading">
+      <div class="controls">
+        <div class="control-group">
+          <label for="statusFilter">Filter by status</label>
+          <select id="statusFilter">
+            <option value="All">All statuses</option>
+            <option value="Applied">Applied</option>
+            <option value="Interview">Interview</option>
+            <option value="Offer">Offer</option>
+            <option value="Rejected">Rejected</option>
+          </select>
+        </div>
+        <p class="count" id="resultCount">Loading applications...</p>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Company</th>
+              <th>Role</th>
+              <th>Date Applied</th>
+              <th>Status</th>
+              <th>Notes</th>
+            </tr>
+          </thead>
+          <tbody id="applicationsBody">
+            <!-- Rows are loaded from the server when the page opens. -->
+          </tbody>
+        </table>
+      </div>
+      <p class="empty" id="emptyState" hidden>No applications match this status.</p>
+    </section>
+  </main>
+
+  <script>
+    // This script runs in the browser after the page loads.
+    // When the page opens, or when the user changes the filter, it asks the server
+    // for matching applications by calling /api/applications?status=...
+    const statusFilter = document.getElementById('statusFilter');
+    const applicationsBody = document.getElementById('applicationsBody');
+    const resultCount = document.getElementById('resultCount');
+    const emptyState = document.getElementById('emptyState');
+
+    // Turn plain text into safe HTML text so data is shown as text, not as code.
+    function escapeHtml(value) {
+      return String(value)
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#39;');
+    }
+
+    // Convert a status like "Applied" into a CSS class like "status-applied".
+    function statusClass(status) {
+      return 'status-' + String(status).toLowerCase();
+    }
+
+    function renderApplications(applications) {
+      applicationsBody.innerHTML = '';
+      emptyState.textContent = 'No applications match this status.';
+
+      applications.forEach((app) => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td>${escapeHtml(app.CompanyName)}</td>
+          <td>${escapeHtml(app.RoleTitle)}</td>
+          <td>${escapeHtml(app.DateApplied)}</td>
+          <td><span class="status ${statusClass(app.Status)}">${escapeHtml(app.Status)}</span></td>
+          <td>${escapeHtml(app.Notes || '')}</td>
+        `;
+        applicationsBody.appendChild(row);
+      });
+
+      const label = applications.length === 1 ? 'application' : 'applications';
+      resultCount.textContent = 'Showing ' + applications.length + ' ' + label;
+      emptyState.hidden = applications.length !== 0;
+    }
+
+    async function loadApplications() {
+      const selectedStatus = statusFilter.value;
+      resultCount.textContent = 'Loading applications...';
+      emptyState.hidden = true;
+
+      try {
+        // encodeURIComponent makes the status safe to put in a URL.
+        const response = await fetch('/api/applications?status=' + encodeURIComponent(selectedStatus));
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || 'Request failed');
+        }
+
+        renderApplications(data);
+      } catch (err) {
+        applicationsBody.innerHTML = '';
+        resultCount.textContent = 'Could not load applications.';
+        emptyState.hidden = false;
+        emptyState.textContent = 'There was a problem loading data from the server. Check that the server is running and the database is connected.';
+        console.error(err);
+      }
+    }
+
+    statusFilter.addEventListener('change', loadApplications);
+
+    // Load real data as soon as the page opens.
+    loadApplications();
+  </script>
+</body>
+</html>
